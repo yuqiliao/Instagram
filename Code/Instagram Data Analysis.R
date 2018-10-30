@@ -34,8 +34,8 @@ library(urbnmapr) #devtools::install_github("UrbanInstitute/urbnmapr")
 library(wesanderson) #install.packages("wesanderson")
 
 ### Creating an OAuth token
-# instagram_app_id  <- "b6cbb5a441464a1996b3eecaa16663e5"
-# instagram_app_secret <- "da93505979eb4a4f81579752aa1effe9"
+# instagram_app_id  <- "<insert your app id>"
+# instagram_app_secret <- "insert your app secret>"
 # token <- instaOAuth(app_id=instagram_app_id,
 #                     app_secret=instagram_app_secret)
 # 
@@ -93,7 +93,7 @@ library(wesanderson) #install.packages("wesanderson")
 # save(wethepeopledc_ls, file = "G:/Instagram Project/wethepeopledc/wethepeople_with_location.rdata")
 
 #load(file = "G:/Instagram Project/wethepeopledc/wethepeople_with_location.rdata")
-load(file = "/Users/Yuqi/Google Drive/Skyladder/Instagram/Data/wethepeople_with_location.rdata")
+#load(file = "/Users/Yuqi/Google Drive/Skyladder/Instagram/Data/wethepeople_with_location.rdata")
 
 # ### Create data frame for further analysis -----
 # out <- data.frame("comments" = character(0),
@@ -263,7 +263,7 @@ load(file = "/Users/Yuqi/Google Drive/Skyladder/Instagram/Data/wethepeople_with_
 load("/Users/Yuqi/Google Drive/Skyladder/Instagram/Data/wethepeople_clean_data.rdata")
 
 
-### Descriptives
+### Descriptives -----
 summary(data)
 summary(as.factor(data$year))
 summary(as.factor(data$month))
@@ -271,33 +271,12 @@ summary(as.factor(data$day))
 summary(as.factor(data$day_of_week)) #interesting
 summary(as.factor(data$hour)) #interesting
 summary(as.factor(data$quarter))
-
-
-
-
-
 # there is one post that disabled comments
 data[data$comments_disabled == TRUE,]
-# most comments received (as of the date of scrapping)
-summary(data$edge_media_to_comment)
-
-data %>% 
-  arrange(desc(edge_media_to_comment)) %>% 
-  select(id) %>% 
-  head()
-
-data[data$id == "1756737130363004810",]
-data[data$id == "1730615329723582673",]
-data[data$id == "1716327519130989529",]
-data[data$id == "1701253423566751905",]
-data[data$id == "1644635929104470880",]
 
 
 
-
-
-
-# most likes received
+### most likes received -----
 summary(data$edge_media_preview_like)
 
 data %>% 
@@ -312,9 +291,22 @@ data[data$id == "1550768162563604311",]
 data[data$id == "1629037250133901946",]
 
 
-# the earliest and latest of a post?
+# most comments received -----
+summary(data$edge_media_to_comment)
 
-#find 2016/10/12
+data %>% 
+  arrange(desc(edge_media_to_comment)) %>% 
+  select(id) %>% 
+  head()
+
+data[data$id == "1756737130363004810",]
+data[data$id == "1730615329723582673",]
+data[data$id == "1716327519130989529",]
+data[data$id == "1701253423566751905",]
+data[data$id == "1644635929104470880",]
+
+
+### find post of a specific date -----
 data %>% 
   filter(year == 2016 & month == 10 & day == 12) %>% 
   View()
@@ -342,18 +334,15 @@ a <- data %>%
 
   
   
-
-  
-### try ggmap -----
-library(rgdal)
-
+### point map -----
 install_github("dkahle/ggmap")
 library(ggmap)
 
 if(!requireNamespace("devtools")) install.packages("devtools")
 devtools::install_github("dkahle/ggmap", ref = "tidyup")
 ggmap(get_googlemap())
-register_google(key = "AIzaSyAnUX3IDOJOfSUiQvxz9yYC5T2uW97NMqs")
+google_key <- "<insert your google key>"
+register_google(key = google_key)
 geocode("waco texas")
 
 DC <- get_map(location="Washington, DC", zoom=12,
@@ -384,8 +373,7 @@ ggmap(DC2) +
              color = "#9A191C")
 
 
-
-### try mapping census track -----
+### area map (census track level) -----
 #Download & clean census tract shapefile for DC
 libs <- c("dplyr",
           "tidyr",
@@ -400,23 +388,23 @@ libs <- c("dplyr",
           "tigris")
 lapply(libs, library, character.only = TRUE)
 
-Cook.shp <- tracts(state = "DC", county = "01")
-#View(Cook.shp)
+DC.shp <- tracts(state = "DC", county = "01")
+#View(DC.shp)
 
-Cook.df  <- tidy(Cook.shp, region="GEOID")
-names(Cook.df)[7] <- "tract"
+DC.df  <- tidy(DC.shp, region="GEOID")
+names(DC.df)[7] <- "tract"
 
 # Map the plain shapefile
-ggplot(Cook.df) +
+ggplot(DC.df) +
   aes(x=long, y=lat, group=group) +
   geom_path(color="black") +
   coord_map()
 
 # Changing colors and adding labels
-ggplot(Cook.df) +
+ggplot(DC.df) +
   aes(x=long, y=lat, group=group) +
   geom_polygon(color="white", fill="#053769") +
-  labs(title="Cook County Census Tracts", x="Longitude", y="Latitude") +
+  labs(title="DC Census Tracts", x="Longitude", y="Latitude") +
   coord_map()
 
 # calculate statistics in data, grouped by fips_11digts, and then merge with Cook.df data
@@ -435,22 +423,22 @@ data_loc_count <- data %>%
   #drop a few outliers (fips_11digt) not within DC (keep only fips that are starts with "11", meaning DC)
   filter(substr(fips_11digt, 1, 2) == "11") 
 
-# merge data_loc_count with Cook.df
-Cook.df_update <- Cook.df %>% 
+# merge data_loc_count with DC.df
+DC.df_update <- DC.df %>% 
   left_join(data_loc_count, by = c("tract" = "fips_11digt")) %>% 
   # change NA into 0
   mutate(n = replace(n, which(is.na(n)), 0))
 
 # draw
-Cook.df_update$category <- cut(Cook.df_update$n, breaks = c(0,10,50,100,Inf), right = FALSE)
+DC.df_update$category <- cut(DC.df_update$n, breaks = c(0,10,50,100,Inf), right = FALSE)
 
-ggplot(Cook.df_update) +
+ggplot(DC.df_update) +
   aes(x=long, y=lat, group=group) +
   geom_polygon(aes(fill=category, group=group), color="#990000", size = 1) +
   geom_polygon(aes(fill=category, group=group), color="white") +
   scale_fill_brewer(palette = "OrRd",
                     name = "Number of \n@WeThePeopleDC \nPosts by Census Track",
-                    breaks = levels(Cook.df_update$category),
+                    breaks = levels(DC.df_update$category),
                     labels = c("Less than 10", "10 to 50", "50 to 100", "100 or more")) +
   #labs(title="@WeThePeopleDC Location by Census Track (2015 - 2018)", x="Longitude", y="Latitude") +
   coord_map() +
@@ -461,25 +449,11 @@ ggplot(Cook.df_update) +
 
 
 
+# ### try urban map r 
+# ggplot() + 
+#   geom_polygon(data = urbnmapr::states %>% filter(state_abbv=="DC"), mapping = aes(x = long, y = lat, group = group), fill = "grey", color = "white") +
+#   coord_map(projection = "albers", lat0 = 39, lat1 = 45)
 
-
-### try urban map r -----
-ggplot() + 
-  geom_polygon(data = urbnmapr::states %>% filter(state_abbv=="DC"), mapping = aes(x = long, y = lat, group = group), fill = "grey", color = "white") +
-  coord_map(projection = "albers", lat0 = 39, lat1 = 45)
-
-
-
-
-
-# qmplot(location_longitude, location_latitude, data = data, geom = "blank", 
-#        zoom = 12, maptype = "toner-background", darken = .7, legend = "topleft"
-# )
-
-
-
-
-### Summary
 
 
 
